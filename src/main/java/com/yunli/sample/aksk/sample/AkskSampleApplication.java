@@ -96,7 +96,7 @@ public class AkskSampleApplication {
   }
 
   private static void queryData(RestTemplate restTemplate, String address, String token) {
-    String uri = address + "/x-gateway-service/gateways/sqls/execute";
+    String uri = address + "/x-storage-service/storages/sqls/execute";
     HttpHeaders requestHeaders = new HttpHeaders();
     requestHeaders.set("x-token", token);
     requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
@@ -132,7 +132,7 @@ public class AkskSampleApplication {
     if (pageNumber <= 0) {
       pageNumber = 1;
     }
-    String uri = address + "/x-gateway-service/gateways/sqls/execute";
+    String uri = address + "/x-storage-service/storages/sqls/execute";
     HttpHeaders requestHeaders = new HttpHeaders();
     requestHeaders.set("x-token", token);
     requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
