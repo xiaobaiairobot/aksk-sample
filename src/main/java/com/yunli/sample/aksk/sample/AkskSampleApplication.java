@@ -40,9 +40,9 @@ public class AkskSampleApplication {
       String[] args)
       throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidKeySpecException,
       IOException, SignatureException {
-    String keyId = "384b3873-47b1-4ea1-bab2-xxx";
-    String privateKey = "MIIEvQIBADANBgkqhkiG9w0BAQExxx";
-    String address = "http://ip:port";
+    String keyId = "485c344e-aa75-4";
+    String privateKey = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCl8vKjODtV/x3uKm9Lc8uGaC6BJOwUo+gX//+/cJnM**";
+    String address = "http://IP:PORT";
     //通过AKSK生成密文
     String cipherText = getCipherText(privateKey);
     RestTemplate restTemplate = new RestTemplate();
@@ -104,9 +104,9 @@ public class AkskSampleApplication {
     UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri);
 
     SqlExecuteDomain sqlRequest = new SqlExecuteDomain();
-    sqlRequest.setSql("select * from test_partition");
+    sqlRequest.setSql("select * from ns_gaolang.y");
     sqlRequest.setTimeout(3600);
-    sqlRequest.setDatabaseId(3L);
+    // sqlRequest.setDatabaseId(3L);
 
     HttpEntity<Object> request = new HttpEntity<>(sqlRequest, requestHeaders);
     try {
@@ -142,9 +142,9 @@ public class AkskSampleApplication {
     SqlExecuteDomain sqlRequest = new SqlExecuteDomain();
     sqlRequest
         .setSql(String
-            .format("select * from test_partition limit %d offset %d", pageSize, pageNumber * pageSize - pageSize));
+            .format("select * from ns_gaolang.y limit %d , %d", pageSize, pageNumber * pageSize - pageSize));
     sqlRequest.setTimeout(3600);
-    sqlRequest.setDatabaseId(3L);
+    // sqlRequest.setDatabaseId(3L);
 
     HttpEntity<Object> request = new HttpEntity<>(sqlRequest, requestHeaders);
     try {
