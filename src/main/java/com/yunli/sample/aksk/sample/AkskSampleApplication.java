@@ -27,6 +27,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -54,10 +56,10 @@ public class AkskSampleApplication {
     String address = "http://IP:PORT";
     //通过AKSK生成密文
     String cipherText = getCipherText(privateKey);
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     String token = getToken(restTemplate, address, keyId, cipherText);
     if (token != null) {
-      System.out.println(String.format("the token is: %s", token));
+      System.out.printf("the token is: %s%n", token);
       queryData(restTemplate, address, token);
       queryDataByPage(restTemplate, address, token, 1, 20L);
     }
@@ -75,7 +77,7 @@ public class AkskSampleApplication {
     PrivateKey privateKey = factory.generatePrivate(privateKeySpec);
     Signature privateSignature = Signature.getInstance("SHA256withRSA");
     privateSignature.initSign(privateKey);
-    String input = String.format("%s@%s", UUID.randomUUID().toString(), 3600 * 24 * 6);
+    String input = String.format("%s@%s", UUID.randomUUID(), 3600 * 24 * 6);
     privateSignature.update(input.getBytes(StandardCharsets.UTF_8));
     return input + "#" + new String(Base64.getEncoder().encode(privateSignature.sign()), StandardCharsets.UTF_8);
   }
@@ -92,14 +94,20 @@ public class AkskSampleApplication {
         cipherText,
         AkskSampleApplication.LOGIN_TYPE
     );
-    HttpEntity<Object> request = new HttpEntity<>(domain, requestHeaders);
-    ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, request, String.class);
-    if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode rootNode = mapper.readTree(responseEntity.getBody());
-      return rootNode.get("token").asText();
-    } else {
-      System.out.println("get token failed-------------------");
+    try {
+      HttpEntity<Object> request = new HttpEntity<>(domain, requestHeaders);
+      ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, request, String.class);
+      if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode rootNode = mapper.readTree(responseEntity.getBody());
+        return rootNode.get("token").asText();
+      } else {
+        System.out.println("get token failed-------------------");
+      }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
     }
     return null;
   }
@@ -124,14 +132,15 @@ public class AkskSampleApplication {
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
         System.out.println("query Data =====================");
         byte[] body = responseEntity.getBody();
-        String result = new String(body,
-            StandardCharsets.UTF_8);
+        String result = new String(body, StandardCharsets.UTF_8);
         // conver csv to json sample
         List listPojo = convertResultToPojo(result);
         System.out.println(listPojo);
       } else {
         System.out.println("query Data failed -------------------");
       }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -208,6 +217,8 @@ public class AkskSampleApplication {
       } else {
         System.out.println("query Data failed -------------------");
       }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
