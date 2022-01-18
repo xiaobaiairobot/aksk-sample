@@ -1,6 +1,10 @@
 package com.yunli.sample.aksk.sample;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
@@ -21,12 +25,17 @@ import javax.crypto.NoSuchPaddingException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -54,12 +63,13 @@ public class AkskSampleApplication {
     String address = "http://IP:PORT";
     //通过AKSK生成密文
     String cipherText = getCipherText(privateKey);
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     String token = getToken(restTemplate, address, keyId, cipherText);
     if (token != null) {
-      System.out.println(String.format("the token is: %s", token));
+      System.out.printf("the token is: %s%n", token);
       queryData(restTemplate, address, token);
       queryDataByPage(restTemplate, address, token, 1, 20L);
+//      downloadFile(restTemplate, address, token);
     }
   }
 
@@ -75,7 +85,7 @@ public class AkskSampleApplication {
     PrivateKey privateKey = factory.generatePrivate(privateKeySpec);
     Signature privateSignature = Signature.getInstance("SHA256withRSA");
     privateSignature.initSign(privateKey);
-    String input = String.format("%s@%s", UUID.randomUUID().toString(), 3600 * 24 * 6);
+    String input = String.format("%s@%s", UUID.randomUUID(), 3600 * 24 * 6);
     privateSignature.update(input.getBytes(StandardCharsets.UTF_8));
     return input + "#" + new String(Base64.getEncoder().encode(privateSignature.sign()), StandardCharsets.UTF_8);
   }
@@ -92,14 +102,20 @@ public class AkskSampleApplication {
         cipherText,
         AkskSampleApplication.LOGIN_TYPE
     );
-    HttpEntity<Object> request = new HttpEntity<>(domain, requestHeaders);
-    ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, request, String.class);
-    if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode rootNode = mapper.readTree(responseEntity.getBody());
-      return rootNode.get("token").asText();
-    } else {
-      System.out.println("get token failed-------------------");
+    try {
+      HttpEntity<Object> request = new HttpEntity<>(domain, requestHeaders);
+      ResponseEntity<String> responseEntity = restTemplate.exchange(uri, HttpMethod.POST, request, String.class);
+      if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode rootNode = mapper.readTree(responseEntity.getBody());
+        return rootNode.get("token").asText();
+      } else {
+        System.out.println("get token failed-------------------");
+      }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
     }
     return null;
   }
@@ -124,14 +140,15 @@ public class AkskSampleApplication {
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
         System.out.println("query Data =====================");
         byte[] body = responseEntity.getBody();
-        String result = new String(body,
-            StandardCharsets.UTF_8);
+        String result = new String(body, StandardCharsets.UTF_8);
         // conver csv to json sample
         List listPojo = convertResultToPojo(result);
         System.out.println(listPojo);
       } else {
         System.out.println("query Data failed -------------------");
       }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
     }
@@ -208,8 +225,44 @@ public class AkskSampleApplication {
       } else {
         System.out.println("query Data failed -------------------");
       }
+    } catch (HttpClientErrorException e) {
+      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
+    }
+  }
+
+  private static void downloadFile(RestTemplate restTemplate, String address, String token) {
+    //要保存的本地路径
+    String savePath = "D://my_demo.pdf";
+    //要下载的中台文件
+    String uri = address + "/x-data-document-service/resources/documents/8/files/40/download";
+    HttpHeaders requestHeaders = new HttpHeaders();
+    requestHeaders.set("x-token", token);
+    UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri);
+    restTemplate.setErrorHandler(new DefaultResponseErrorHandler(){
+      @Override
+      public void handleError(ClientHttpResponse clientHttpResponse) {
+      }
+    });
+    HttpEntity<Object> request = new HttpEntity<>(requestHeaders);
+    ResponseEntity<Resource> responseEntity = restTemplate
+        .exchange(builder.toUriString(), HttpMethod.GET, request, Resource.class);
+    if (responseEntity.getStatusCode() == HttpStatus.OK) {
+      System.out.println("download File Success =====================");
+      File file = new File(savePath);
+      Resource body = responseEntity.getBody();
+      try (InputStream is = body.getInputStream(); OutputStream os = new FileOutputStream(file)) {
+        int read;
+        byte[] bytes = new byte[1024];
+        while ((read = is.read(bytes)) > 0) {
+          os.write(bytes, 0, read);
+        }
+      } catch (IOException e) {
+        System.out.println(e.getMessage());
+      }
+    } else {
+      System.out.println("download File failed -------------------");
     }
   }
 }
