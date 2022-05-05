@@ -36,6 +36,7 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -147,7 +148,7 @@ public class AkskSampleApplication {
       } else {
         System.out.println("query Data failed -------------------");
       }
-    } catch (HttpClientErrorException e) {
+    } catch (HttpClientErrorException | HttpServerErrorException e) {
       System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -189,7 +190,7 @@ public class AkskSampleApplication {
         }
       }
     }
-    System.out.println("finish read all data from csv to domain");
+    System.out.println("finish read all data from csv to domain:" + result);
     return list;
   }
 
@@ -225,7 +226,7 @@ public class AkskSampleApplication {
       } else {
         System.out.println("query Data failed -------------------");
       }
-    } catch (HttpClientErrorException e) {
+    } catch (HttpClientErrorException | HttpServerErrorException e) {
       System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
       System.out.println(e.getMessage());
