@@ -25,6 +25,8 @@ import javax.crypto.NoSuchPaddingException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -55,19 +57,21 @@ public class AkskSampleApplication {
 
   private static final String LOGIN_TYPE = "aksk";
 
-  public static void main(
-      String[] args)
+  public static final Logger LOGGER = LoggerFactory.getLogger(AkskSampleApplication.class);
+
+  public static void main(String[] args)
       throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidKeySpecException,
       IOException, SignatureException {
-    String keyId = "2e059499-";
-    String privateKey = "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCB***";
+
+    String keyId = "c4249fec-8e1a****";
+    String privateKey = "MIIEvwIBADANBgkqhkiG9w0BAQE***";
     String address = "http://IP:PORT";
     //通过AKSK生成密文
     String cipherText = getCipherText(privateKey);
     RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     String token = getToken(restTemplate, address, keyId, cipherText);
     if (token != null) {
-      System.out.printf("the token is: %s%n", token);
+      LOGGER.info("the token is: {}", token);
       queryData(restTemplate, address, token);
       queryDataByPage(restTemplate, address, token, 1, 20L);
 //      downloadFile(restTemplate, address, token);
@@ -111,12 +115,12 @@ public class AkskSampleApplication {
         JsonNode rootNode = mapper.readTree(responseEntity.getBody());
         return rootNode.get("token").asText();
       } else {
-        System.out.println("get token failed-------------------");
+        LOGGER.info("get token failed-------------------");
       }
     } catch (HttpClientErrorException e) {
-      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+      LOGGER.info(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      LOGGER.warn(e.getMessage(), e);
     }
     return null;
   }
@@ -130,28 +134,26 @@ public class AkskSampleApplication {
     UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri);
 
     SqlExecuteDomain sqlRequest = new SqlExecuteDomain();
-    sqlRequest.setSql("select * from health_hospitalization");
+    sqlRequest.setSql("select * from ns_dengbinfeng.pupil");
     sqlRequest.setTimeout(3600);
-    // sqlRequest.setDatabaseId(3L);
 
     HttpEntity<Object> request = new HttpEntity<>(sqlRequest, requestHeaders);
     try {
       ResponseEntity<byte[]> responseEntity = restTemplate
           .exchange(builder.toUriString(), HttpMethod.POST, request, byte[].class);
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-        System.out.println("query Data =====================");
+        LOGGER.debug("query Data =====================");
         byte[] body = responseEntity.getBody();
         String result = new String(body, StandardCharsets.UTF_8);
         // conver csv to json sample
         List listPojo = convertResultToPojo(result);
-        System.out.println(listPojo);
       } else {
-        System.out.println("query Data failed -------------------");
+        LOGGER.debug("query Data failed -------------------");
       }
     } catch (HttpClientErrorException | HttpServerErrorException e) {
-      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+      LOGGER.warn(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      LOGGER.warn(e.getMessage(), e);
     }
   }
 
@@ -190,7 +192,7 @@ public class AkskSampleApplication {
         }
       }
     }
-    System.out.println("finish read all data from csv to domain:" + result);
+    LOGGER.info("finish read all data from csv to domain: {}", result);
     return list;
   }
 
@@ -210,26 +212,25 @@ public class AkskSampleApplication {
     SqlExecuteDomain sqlRequest = new SqlExecuteDomain();
     sqlRequest
         .setSql(String
-            .format("select * from ns_gaolang.y limit %d , %d", pageSize, pageNumber * pageSize - pageSize));
+            .format("select * from ns_gaolang.y limit %d , %d", pageNumber * pageSize - pageSize, pageSize));
     sqlRequest.setTimeout(3600);
-    // sqlRequest.setDatabaseId(3L);
 
     HttpEntity<Object> request = new HttpEntity<>(sqlRequest, requestHeaders);
     try {
       ResponseEntity<byte[]> responseEntity = restTemplate
           .exchange(builder.toUriString(), HttpMethod.POST, request, byte[].class);
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
-        System.out.println("query Data By Page=====================");
+        LOGGER.debug("query Data By Page=====================");
         byte[] body = responseEntity.getBody();
         String result = new String(body, StandardCharsets.UTF_8);
-        System.out.println(result);
+        LOGGER.info(result);
       } else {
-        System.out.println("query Data failed -------------------");
+        LOGGER.warn("query Data failed -------------------");
       }
     } catch (HttpClientErrorException | HttpServerErrorException e) {
-      System.out.println(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+      LOGGER.warn(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      LOGGER.warn(e.getMessage(), e);
     }
   }
 
@@ -241,7 +242,7 @@ public class AkskSampleApplication {
     HttpHeaders requestHeaders = new HttpHeaders();
     requestHeaders.set("x-token", token);
     UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri);
-    restTemplate.setErrorHandler(new DefaultResponseErrorHandler(){
+    restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
       @Override
       public void handleError(ClientHttpResponse clientHttpResponse) {
       }
@@ -250,7 +251,7 @@ public class AkskSampleApplication {
     ResponseEntity<Resource> responseEntity = restTemplate
         .exchange(builder.toUriString(), HttpMethod.GET, request, Resource.class);
     if (responseEntity.getStatusCode() == HttpStatus.OK) {
-      System.out.println("download File Success =====================");
+      LOGGER.debug("download File Success =====================");
       File file = new File(savePath);
       Resource body = responseEntity.getBody();
       try (InputStream is = body.getInputStream(); OutputStream os = new FileOutputStream(file)) {
@@ -260,10 +261,10 @@ public class AkskSampleApplication {
           os.write(bytes, 0, read);
         }
       } catch (IOException e) {
-        System.out.println(e.getMessage());
+        LOGGER.warn(e.getMessage(), e);
       }
     } else {
-      System.out.println("download File failed -------------------");
+      LOGGER.warn("download File failed -------------------");
     }
   }
 }
