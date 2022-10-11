@@ -222,6 +222,10 @@ public class AkskSampleApplication {
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
         LOGGER.debug("query Data By Page=====================");
         byte[] body = responseEntity.getBody();
+        if(body == null){
+          LOGGER.info("there is not result for this sql: {}", sqlRequest.getSql());
+          return;
+        }
         String result = new String(body, StandardCharsets.UTF_8);
         LOGGER.info(result);
       } else {
