@@ -72,9 +72,14 @@ public class AkskSampleApplication {
     String token = getToken(restTemplate, address, keyId, cipherText);
     if (token != null) {
       LOGGER.info("the token is: {}", token);
+      //查询SQL执行案例
       queryData(restTemplate, address, token);
+      //查询SQL分页执行案例
       queryDataByPage(restTemplate, address, token, 1, 20L);
+      //下载文件执行案例
 //      downloadFile(restTemplate, address, token);
+      //派生指标执行案例
+//      queryIndicatorDeriveConsumption(restTemplate,address,token);
     }
   }
 
@@ -269,6 +274,43 @@ public class AkskSampleApplication {
       }
     } else {
       LOGGER.warn("download File failed -------------------");
+    }
+  }
+
+
+  /**
+   * 派生指标执行案例
+   * @param restTemplate restTemplate
+   * @param address address
+   * @param token token
+   */
+  private static void queryIndicatorDeriveConsumption(RestTemplate restTemplate, String address, String token) {
+    String uri = address + "/x-data-resource-service/v1/resources/indicator/derive/consumption";
+    HttpHeaders requestHeaders = new HttpHeaders();
+    requestHeaders.set("x-token", token);
+    requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
+    requestHeaders.setContentType(MediaType.APPLICATION_JSON);
+    UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri).
+        queryParam("id", "207").
+        queryParam("startTime", "2022071500").
+        queryParam("endTime", "2023091500");
+
+    HttpEntity<Object> request = new HttpEntity<>(requestHeaders);
+    try {
+      ResponseEntity<byte[]> responseEntity = restTemplate
+          .exchange(builder.toUriString(), HttpMethod.GET, request, byte[].class);
+      if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
+        LOGGER.debug("query Data =====================");
+        byte[] body = responseEntity.getBody();
+        String result = new String(body, StandardCharsets.UTF_8);
+        LOGGER.info(result);
+      } else {
+        LOGGER.debug("query Data failed -------------------");
+      }
+    } catch (HttpClientErrorException | HttpServerErrorException e) {
+      LOGGER.warn(new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8));
+    } catch (Exception e) {
+      LOGGER.warn(e.getMessage(), e);
     }
   }
 }
