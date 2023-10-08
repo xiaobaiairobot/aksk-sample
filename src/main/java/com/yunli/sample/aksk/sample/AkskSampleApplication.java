@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -40,6 +41,7 @@ import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -80,6 +82,8 @@ public class AkskSampleApplication {
 //      downloadFile(restTemplate, address, token);
       //派生指标执行案例
 //      queryIndicatorDeriveConsumption(restTemplate,address,token);
+      //既定/复合标执行案例
+//      queryIndicatorOpenIndicatorsValues(restTemplate,address,token);
     }
   }
 
@@ -284,17 +288,52 @@ public class AkskSampleApplication {
    * @param address address
    * @param token token
    */
-  private static void queryIndicatorDeriveConsumption(RestTemplate restTemplate, String address, String token) {
+  private static String queryIndicatorDeriveConsumption(RestTemplate restTemplate, String address, String token) {
     String uri = address + "/x-data-resource-service/v1/resources/indicator/derive/consumption";
     HttpHeaders requestHeaders = new HttpHeaders();
     requestHeaders.set("x-token", token);
     requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
     requestHeaders.setContentType(MediaType.APPLICATION_JSON);
-    UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(uri).
+    UriComponents builder = UriComponentsBuilder.fromHttpUrl(uri).
         queryParam("id", "207").
         queryParam("startTime", "2022071500").
-        queryParam("endTime", "2023091500");
+        queryParam("endTime", "2023091500").build();
 
+    return getIndicatorResult(restTemplate,builder,requestHeaders);
+  }
+
+  /**
+   * 既定/复合指标执行案例
+   * @param restTemplate restTemplate
+   * @param address address
+   * @param token token
+   */
+  private static String queryIndicatorOpenIndicatorsValues(RestTemplate restTemplate, String address, String token)
+      throws UnsupportedEncodingException {
+    String uri = address + "/x-data-resource-service/v1/indicator/open/indicators/values";
+    HttpHeaders requestHeaders = new HttpHeaders();
+    requestHeaders.set("x-token", token);
+    requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
+    requestHeaders.setContentType(MediaType.APPLICATION_JSON);
+    UriComponents builder = UriComponentsBuilder.fromHttpUrl(uri).
+        queryParam("_id", "17,8").
+        queryParam("_start", "2023-01-01 00:00:00").
+        queryParam("_end", "2023-10-01 00:00:00").
+        queryParam("_format", "general").
+        queryParam("_orders", "17").
+        queryParam("_desc", "true").build();
+    return getIndicatorResult(restTemplate,builder,requestHeaders);
+  }
+
+
+  /**
+   * 获取指标执行结果
+   * @param restTemplate restTemplate
+   * @param builder builder
+   * @param requestHeaders requestHeaders
+   */
+  private static String getIndicatorResult(RestTemplate restTemplate,UriComponents builder, HttpHeaders requestHeaders) {
+    String result = "";
     HttpEntity<Object> request = new HttpEntity<>(requestHeaders);
     try {
       ResponseEntity<byte[]> responseEntity = restTemplate
@@ -302,7 +341,7 @@ public class AkskSampleApplication {
       if (responseEntity.getStatusCode() == HttpStatus.OK || responseEntity.getStatusCode() == HttpStatus.CREATED) {
         LOGGER.debug("query Data =====================");
         byte[] body = responseEntity.getBody();
-        String result = new String(body, StandardCharsets.UTF_8);
+        result = new String(body, StandardCharsets.UTF_8);
         LOGGER.info(result);
       } else {
         LOGGER.debug("query Data failed -------------------");
@@ -312,5 +351,6 @@ public class AkskSampleApplication {
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
     }
+    return result;
   }
 }
