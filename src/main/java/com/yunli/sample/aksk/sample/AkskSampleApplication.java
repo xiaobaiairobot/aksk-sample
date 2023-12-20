@@ -1,5 +1,6 @@
 package com.yunli.sample.aksk.sample;
 
+import com.yunli.sample.aksk.sample.configuration.HttpsClientRequestFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -65,13 +66,21 @@ public class AkskSampleApplication {
       throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidKeySpecException,
       IOException, SignatureException {
 
-    String keyId = "c4249fec-8e1a****";
-    String privateKey = "MIIEvwIBADANBgkqhkiG9w0BAQE***";
-    String address = "http://IP:PORT";
+    String keyId = "5cd57ea****";
+    String privateKey = "25101995-3c25****";
+    String address = "http://IP:port";
     //通过AKSK生成密文
-    String cipherText = getCipherText(privateKey);
-    RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
-    String token = getToken(restTemplate, address, keyId, cipherText);
+     String cipherText = getCipherText(privateKey);
+    RestTemplate restTemplate = null;
+    if(StringUtils.isBlank(address)) {
+      throw new NullPointerException("the address is null");
+    }
+    if(address.startsWith("https")) {
+      restTemplate = AkskSampleApplication.getHttpsRestTemplate();
+    }else {
+      restTemplate = AkskSampleApplication.getHttpRestTemplate();
+    }
+    String token = getToken( restTemplate, address, keyId, cipherText);
     if (token != null) {
       LOGGER.info("the token is: {}", token);
       //查询SQL执行案例
@@ -106,7 +115,7 @@ public class AkskSampleApplication {
 
   /***获取token**@paramcipherText密文**@returntoken*/
   private static String getToken(RestTemplate restTemplate, String address, String keyId, String cipherText)
-      throws IOException {
+      throws IOException, NullPointerException {
     String uri = address + "/x-authorization-service/authorizations/logins";
     HttpHeaders requestHeaders = new HttpHeaders();
     requestHeaders.add("Accept", MediaType.APPLICATION_JSON.toString());
@@ -352,5 +361,13 @@ public class AkskSampleApplication {
       LOGGER.warn(e.getMessage(), e);
     }
     return result;
+  }
+
+  private static RestTemplate getHttpsRestTemplate() {
+    return new RestTemplate(new HttpsClientRequestFactory());
+  }
+
+  private static RestTemplate getHttpRestTemplate() {
+    return new RestTemplate(new HttpComponentsClientHttpRequestFactory());
   }
 }
